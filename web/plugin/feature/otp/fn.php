@@ -18,7 +18,7 @@
  */
 defined('_SECURE_') or die('Forbidden');
 
-function _otp_generate($len = 4) {
+function otp_generate($len = 4) {
 	$len = ((int) $len > 0 ? (int) $len : 4);
 	for ($i = 0; $i < $len; $i++) {
 		$otp .= rand(1, 9);
@@ -27,7 +27,35 @@ function _otp_generate($len = 4) {
 	return $otp;
 }
 
+function otp_send($msisdn, $template, $len = 4) {
+	if ($otp = otp_generate($len)) {
+		$message = str_replace('{OTP}', $otp, $template);
+		$unicode = core_detect_unicode($message);
+		list($ok, $to, $smslog_id, $queue) = sendsms_helper($u, $msisdn, $message, '', $unicode, '', TRUE);
+		if ($ok[0] && $to[0] && $smslog_id[0] && $queue[0]) {
+			
+			return array(
+				$otp,
+				$to[0],
+				$message,
+				$smslog_id[0],
+				$queue[0] 
+			);
+		}
+	}
+	
+	return array(
+		NULL,
+		'',
+		'',
+		NULL,
+		'' 
+	);
+}
+
 function otp_hook_webservices_output($operation, $requests, $returns) {
+	$returns = array();
+	
 	if (!($operation == 'otp')) {
 		return FALSE;
 	}
@@ -68,42 +96,37 @@ function otp_hook_webservices_output($operation, $requests, $returns) {
 	
 	$len = (trim($requests['len']) ? trim($requests['len']) : 4);
 	
-	if ($otp = _otp_generate($len)) {
+	_log('OTP start sending u:' . $u . ' msisdn:' . $msisdn . ' template:' . $template, 2, 'otp_hook_webservices_output');
+	
+	list($otp, $to, $message, $smslog_id, $queue) = otp_send($msisdn, $template, $len);
+	
+	if ($otp && $to && $message && $smslog_id && $queue) {
+		$returns['modified'] = TRUE;
+		$returns['param']['content'] = json_encode(array(
+			'status' => 'OK',
+			'error' => '0',
+			'error_string' => '',
+			'data' => array(
+				'otp' => $otp,
+				'msisdn' => $to,
+				'message' => $message,
+				'smslog_id' => $smslog_id,
+				'queue' => $queue 
+			) 
+		));
+		$returns['param']['content-type'] = 'text/json';
 		
-		_log('OTP start sending otp:' . $otp . ' u:' . $u . ' msisdn:' . $msisdn . ' template:' . $template, 2, 'otp_hook_webservices_output');
+		_log('OTP status:OK error:0 otp:' . $otp . ' u:' . $u . ' msisdn:' . $to . ' smslog_id:' . $smslog_id, 2, 'otp_hook_webservices_output');
+	} else {
+		$returns['modified'] = TRUE;
+		$returns['param']['content'] = json_encode(array(
+			'status' => 'ERR',
+			'error' => 200,
+			'error_string' => 'send message failed' 
+		));
+		$returns['param']['content-type'] = 'text/json';
 		
-		$message = str_replace('{OTP}', $otp, $template);
-		$unicode = core_detect_unicode($message);
-		list($ok, $to, $smslog_id, $queue) = sendsms_helper($u, $msisdn, $message, '', $unicode, '', TRUE);
-		
-		if ($ok[0] && $to[0] && $smslog_id[0] && $queue[0]) {
-			$returns['modified'] = TRUE;
-			$returns['param']['content'] = json_encode(array(
-				'status' => 'OK',
-				'error' => '0',
-				'error_string' => '',
-				'data' => array(
-					'otp' => $otp,
-					'msisdn' => $to[0],
-					'message' => $message,
-					'smslog_id' => $smslog_id[0],
-					'queue' => $queue[0] 
-				) 
-			));
-			$returns['param']['content-type'] = 'text/json';
-			
-			_log('OTP status:OK error:0 otp:' . $otp . ' u:' . $u . ' msisdn:' . $to[0] . ' smslog_id:' . $smslog_id[0], 2, 'otp_hook_webservices_output');
-		} else {
-			$returns['modified'] = TRUE;
-			$returns['param']['content'] = json_encode(array(
-				'status' => 'ERR',
-				'error' => 200,
-				'error_string' => 'send message failed' 
-			));
-			$returns['param']['content-type'] = 'text/json';
-			
-			_log('OTP status:ERR error:200 otp:' . $otp . ' u:' . $u . ' msisdn:' . $to[0] . ' smslog_id:' . $smslog_id[0], 2, 'otp_hook_webservices_output');
-		}
+		_log('OTP status:ERR error:200 otp:' . $otp . ' u:' . $u . ' msisdn:' . $to . ' smslog_id:' . $smslog_id, 2, 'otp_hook_webservices_output');
 	}
 	
 	return $returns;
