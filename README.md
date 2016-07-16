@@ -15,7 +15,7 @@ License       | GPLv3
 
 ## Version 1
 
-    - changelog started
+   - changelog started
 
 # Installation
 
@@ -23,8 +23,8 @@ Current version of this plugin should work with playSMS 1.1 and above.
 
 Here is how to install it on a working playSMS:
 
-    - Just copy `web/plugin/feature/otp` to the playSMS `plugin/feature` folder
-    - No need to restart `playsmsd`
+- Just copy `web/plugin/feature/otp` to the playSMS `plugin/feature` folder
+- No need to restart `playsmsd`
 
 # Usage
 
