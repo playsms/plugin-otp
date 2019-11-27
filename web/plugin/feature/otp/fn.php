@@ -27,7 +27,7 @@ function otp_generate($len = 4) {
 	return $otp;
 }
 
-function otp_send($msisdn, $template, $len = 4) {
+function otp_send($u,$msisdn, $template, $len = 4) {
 	if ($otp = otp_generate($len)) {
 		$message = str_replace('{OTP}', $otp, $template);
 		$unicode = core_detect_unicode($message);
@@ -98,7 +98,7 @@ function otp_hook_webservices_output($operation, $requests, $returns) {
 	
 	_log('OTP start sending u:' . $u . ' msisdn:' . $msisdn . ' template:' . $template, 2, 'otp_hook_webservices_output');
 	
-	list($otp, $to, $message, $smslog_id, $queue) = otp_send($msisdn, $template, $len);
+	list($otp, $to, $message, $smslog_id, $queue) = otp_send($u,$msisdn, $template, $len);
 	
 	if ($otp && $to && $message && $smslog_id && $queue) {
 		$returns['modified'] = TRUE;
